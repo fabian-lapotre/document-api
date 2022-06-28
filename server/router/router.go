@@ -3,13 +3,16 @@ package router
 import (
 	"net/http"
 
-	"github.com/fabian-lapotre/document-api/server/model"
+	"github.com/fabian-lapotre/document-api/server/api"
+	"github.com/fabian-lapotre/document-api/server/database"
+
 	"github.com/gin-gonic/gin"
 )
 
-var db = make(map[string]model.Document, 0)
+func SetupRouter(initialDb *database.GormDataBase) *gin.Engine {
 
-func SetupRouter() *gin.Engine {
+	documentHandler := api.DocumentApi{DB: initialDb}
+
 	// Disable Console Color
 	// gin.DisableConsoleColor()
 	r := gin.Default()
@@ -22,58 +25,16 @@ func SetupRouter() *gin.Engine {
 	doc := r.Group("/document")
 
 	// Get documents
-	doc.GET("", getDocumentsHandler)
+	doc.GET("", documentHandler.GetDocuments)
 
 	// Get document by id
-	doc.GET("/:id", getDocumentHandler)
+	doc.GET("/:id", documentHandler.GetDocument)
 
 	// Create document
-	doc.POST("", createDocumentHandler)
+	doc.POST("", documentHandler.CreateDocument)
 
 	// Delete document
-	doc.DELETE("", func(c *gin.Context) {
-	})
+	doc.DELETE("/:id", documentHandler.DeleteDocument)
 
 	return r
-}
-
-func getDocumentHandler(c *gin.Context) {
-
-	if doc, ok := db[c.Param("id")]; ok {
-		c.JSON(http.StatusOK, doc)
-	} else {
-		c.JSON(http.StatusNotFound, gin.H{"status": "Document not found"})
-	}
-
-}
-
-func getDocumentsHandler(c *gin.Context) {
-
-	for _, doc := range db {
-		c.JSON(http.StatusOK, doc)
-	}
-
-}
-
-func createDocumentHandler(c *gin.Context) {
-
-	var newDoc model.Document
-
-	if err := c.Bind(&newDoc); err == nil {
-		db[newDoc.ID] = newDoc
-		c.JSON(http.StatusOK, gin.H{"status": "ok"})
-	} else {
-		c.JSON(http.StatusBadRequest, gin.H{"status": "Could not create document: " + err.Error()})
-	}
-
-}
-
-func deleteDocumentHandler(c *gin.Context) {
-	if doc, ok := db[c.Param("id")]; ok {
-		delete(db, doc.ID)
-		c.JSON(http.StatusOK, gin.H{"status": "ok"})
-	} else {
-		c.JSON(http.StatusNotFound, gin.H{"status": "Document not found"})
-	}
-
 }

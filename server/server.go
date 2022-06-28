@@ -1,10 +1,22 @@
-package main
+package server
 
-import "github.com/fabian-lapotre/document-api/server/router"
+import (
+	"github.com/fabian-lapotre/document-api/server/database"
+	"github.com/fabian-lapotre/document-api/server/model"
+	"github.com/fabian-lapotre/document-api/server/router"
+	"github.com/gin-gonic/gin"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
+)
 
-func main() {
-	r := router.SetupRouter()
+// Create a new router
+func Create(initialDb map[string]model.Document) *gin.Engine {
 
-	// Listen and Server in 0.0.0.0:8080
-	r.Run(":8080")
+	db, err := gorm.Open(sqlite.Open("database.db"), &gorm.Config{})
+	if err != nil {
+		panic(err)
+	}
+
+	return router.SetupRouter(&database.GormDataBase{DB: db})
+
 }
