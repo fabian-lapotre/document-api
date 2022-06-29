@@ -17,6 +17,11 @@ func Create(initialDb map[string]model.Document) *gin.Engine {
 		panic(err)
 	}
 
+	err = db.AutoMigrate(&model.Document{})
+	if err != nil {
+		panic(err)
+	}
+
 	return router.SetupRouter(&database.GormDataBase{DB: db})
 
 }

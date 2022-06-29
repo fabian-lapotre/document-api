@@ -52,7 +52,14 @@ func (d *DocumentApi) CreateDocument(c *gin.Context) {
 
 	if err := c.Bind(&newDoc); err == nil {
 		if err := d.DB.CreateDocument(newDoc); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"status": "Could not create document: " + err.Error()})
+			// check if error is unique constraint error
+			if err.Error() == "UNIQUE constraint failed: documents.id" {
+				c.JSON(http.StatusConflict, gin.H{"status": "Document already exists"})
+				return
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{"status": "Could not create document: " + err.Error()})
+			}
+
 		} else {
 			c.JSON(http.StatusOK, gin.H{"status": "Document created"})
 		}
@@ -71,7 +78,6 @@ func (d *DocumentApi) DeleteDocument(c *gin.Context) {
 	}
 	if err := d.DB.DeleteDocumentByID(uint(lookfor)); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"status": "Could not delete document: " + err.Error()})
-
 	} else {
 		c.JSON(http.StatusOK, gin.H{"status": "Document deleted"})
 	}

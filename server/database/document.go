@@ -16,7 +16,7 @@ func (d *GormDataBase) GetDocumentByID(id uint) (model.Document, error) {
 }
 
 func (d *GormDataBase) DeleteDocumentByID(id uint) error {
-	return d.DB.Delete(&model.Document{ID: id}).Error
+	return d.DB.Delete(&model.Document{}, id).Error
 }
 
 func (d *GormDataBase) GetDocuments() ([]model.Document, error) {

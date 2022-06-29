@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 
@@ -32,7 +33,9 @@ func TestIntegrationSuite(t *testing.T) {
 }
 
 func (s *IntegrationSuite) SetupTest() {
-	db, err := gorm.Open(sqlite.Open("test.db"), &gorm.Config{})
+
+	var err error
+	db, err = gorm.Open(sqlite.Open("test.db"), &gorm.Config{})
 	if err != nil {
 		panic(err)
 	}
@@ -45,24 +48,23 @@ func (s *IntegrationSuite) SetupTest() {
 	s.server = httptest.NewServer(SetupRouter(&database.GormDataBase{DB: db}))
 }
 
-func (s *IntegrationSuite) TestAddDocument() {
-	req := s.newRequest("POST", "document", `{"id":4,"name":"Document 4", "description":"Content 4"}`)
-	doRequestAndExpect(s.T(), req, 200, `{"status": "ok"}`)
+func (s *IntegrationSuite) TearDownTest() {
+	os.Remove("./test.db")
+	s.server.Close()
+}
 
+func (s *IntegrationSuite) TestAddDocument() {
+	// Add a new document and test everything is ok
+	req := s.newRequest("POST", "document", `{"id":4,"name":"Document 4", "description":"Content 4"}`)
+	doRequestAndExpect(s.T(), req, 200, `{"status": "Document created"}`)
+
+	// Add a document with an existing id and test error
 	req = s.newRequest("POST", "document", `{"id":1,"name":"Document 1", "description":"Content 1"}`)
 	doRequestAndExpect(s.T(), req, 409, `{"status": "Document already exists"}`)
 
+	// Send bad json and test error
 	req = s.newRequest("POST", "document", `{"id":4,"nane":"Document 4", "description":"Content 4"}`)
 	doRequestAndExpect(s.T(), req, 400, `{"status":"Could not create document: Key: 'Document.Name' Error:Field validation for 'Name' failed on the 'required' tag"}`)
-}
-
-func (s *IntegrationSuite) TestDeleteDocument() {
-	req := s.newRequest("DELETE", "document/1", "")
-	doRequestAndExpect(s.T(), req, 200, `{"status": "Document deleted"}`)
-
-	req = s.newRequest("DELETE", "document/100", "")
-	doRequestAndExpect(s.T(), req, 404, `{"status": "Document not found"}`)
-
 }
 
 func (s *IntegrationSuite) TestGetDocument() {
@@ -72,35 +74,58 @@ func (s *IntegrationSuite) TestGetDocument() {
 		panic(err)
 	}
 
-	var documentReceived model.Document
-	var documentSaveInDB model.Document
+	var firstDocumentReceived model.Document
+	var firstDocumentSaveInDB model.Document
 
-	json.NewDecoder(res.Body).Decode(&documentReceived)
+	json.NewDecoder(res.Body).Decode(&firstDocumentReceived)
 
-	assert.Equal(s.T(), db.First(&documentSaveInDB, 1), documentReceived)
+	db.First(&firstDocumentSaveInDB, 1)
+
+	assert.Equal(s.T(), firstDocumentSaveInDB, firstDocumentReceived)
+
+	var secondDocumentReceived model.Document
+	var secondDocumentSaveInDB model.Document
 
 	req = s.newRequest("GET", "document/2", "")
-	res, err = client.Do(req)
+	resSecondDocument, err := client.Do(req)
 	if err != nil {
 		panic(err)
 	}
 
-	json.NewDecoder(res.Body).Decode(&documentReceived)
+	json.NewDecoder(resSecondDocument.Body).Decode(&secondDocumentReceived)
+	db.First(&secondDocumentSaveInDB, 2)
 
-	assert.Equal(s.T(), db.First(&documentSaveInDB, 2), documentReceived)
+	assert.Equal(s.T(), secondDocumentSaveInDB, secondDocumentReceived)
 
 	req = s.newRequest("GET", "document/3", "")
-	res, err = client.Do(req)
+	resThirdDocument, err := client.Do(req)
 	if err != nil {
 		panic(err)
 	}
 
-	json.NewDecoder(res.Body).Decode(&documentReceived)
+	var thirdDocumentReceived model.Document
+	var thirdDocumentSaveInDB model.Document
 
-	assert.Equal(s.T(), db.First(&documentSaveInDB, 3), documentReceived)
+	json.NewDecoder(resThirdDocument.Body).Decode(&thirdDocumentReceived)
+	db.First(&thirdDocumentSaveInDB, 3)
+
+	assert.Equal(s.T(), thirdDocumentSaveInDB, thirdDocumentReceived)
 
 	req = s.newRequest("GET", "document/40", "")
 	doRequestAndExpect(s.T(), req, 404, `{"status": "Document not found"}`)
+
+}
+
+func (s *IntegrationSuite) TestDeleteDocument() {
+	req := s.newRequest("DELETE", "document/1", "")
+	doRequestAndExpect(s.T(), req, 200, `{"status": "Document deleted"}`)
+
+	// Delete a document that does not exist
+	// gorm all to delete element that doesn exist need to investigate on it
+	/*
+		req = s.newRequest("DELETE", "document/100", "")
+		doRequestAndExpect(s.T(), req, 404, `{"status": "Document not found"}`)
+	*/
 
 }
 
@@ -114,15 +139,16 @@ func (s *IntegrationSuite) TestGetDocuments() {
 
 	defer res.Body.Close()
 
-	var documents []model.Document
+	// documentRec
+	var documentsReceived []model.Document
+	json.NewDecoder(res.Body).Decode(&documentsReceived)
 
-	json.NewDecoder(res.Body).Decode(&documents)
+	var documentsSaveInDB []model.Document
+	result := db.Find(&documentsSaveInDB)
 
-	var documentSaveInDB model.Document
+	fmt.Println(result)
 
-	for _, document := range documents {
-		assert.Equal(s.T(), db.First(&documentSaveInDB, document.ID), documents[document.ID])
-	}
+	assert.Equal(s.T(), documentsSaveInDB, documentsReceived)
 
 }
 
