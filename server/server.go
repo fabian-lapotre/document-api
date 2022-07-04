@@ -1,6 +1,9 @@
 package server
 
 import (
+	"log"
+	"os"
+
 	"github.com/fabian-lapotre/document-api/server/database"
 	"github.com/fabian-lapotre/document-api/server/model"
 	"github.com/fabian-lapotre/document-api/server/router"
@@ -12,7 +15,11 @@ import (
 // Create a new router
 func Create() *gin.Engine {
 
-	db, err := gorm.Open(sqlite.Open("database.db"), &gorm.Config{})
+	databasePath := os.ExpandEnv("${DATABASE_LOCALIZATION}/${DATABASE_NAME}")
+
+	log.Printf("creating database inside %v ", databasePath)
+
+	db, err := gorm.Open(sqlite.Open(databasePath), &gorm.Config{})
 	if err != nil {
 		panic(err)
 	}

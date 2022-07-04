@@ -29,19 +29,6 @@ func main() {
 		})
 	}
 	{
-		myServer := server.Create()
-		srv := &http.Server{
-			Addr:    ":8081",
-			Handler: myServer,
-		}
-		g.Add(func() error {
-			return srv.ListenAndServe()
-		}, func(error) {
-			srv.Close()
-
-		})
-	}
-	{
 		// This function just sits and waits for ctrl-C.
 		cancelInterrupt := make(chan struct{})
 		g.Add(func() error {
