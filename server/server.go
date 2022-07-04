@@ -10,7 +10,7 @@ import (
 )
 
 // Create a new router
-func Create(initialDb map[string]model.Document) *gin.Engine {
+func Create() *gin.Engine {
 
 	db, err := gorm.Open(sqlite.Open("database.db"), &gorm.Config{})
 	if err != nil {
