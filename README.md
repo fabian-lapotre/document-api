@@ -26,7 +26,8 @@ If your user is note inside a docker group as explain [here](https://docs.docker
 ## Usage 
 
 ### Local
-`./api-document`
+
+`./launch`
 
 ### Container
 
